@@ -1,6 +1,6 @@
 {
   "name": "torn-war-base-retro-style",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Brings back the old war base layout",
   "main": "Gruntfile.js",
   "dependencies": {},
