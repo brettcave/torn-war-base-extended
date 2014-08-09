@@ -3,6 +3,7 @@
 		"GM_addStyle": true
 	},
 	"rules": {
-		"new-cap": 1
+		"new-cap": 1,
+		"quotes": [1, "single", "avoid-escape"]
 	}
 }
