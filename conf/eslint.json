@@ -1,14 +1,14 @@
 {
-	"globals": {
-		"GM_addStyle": true,
-		"$": true,
-		"jQuery": true,
-		"localStorage": true,
-		"window": true
-	},
-	"rules": {
-		"new-cap": 1,
-		"quotes": [1, "single", "avoid-escape"],
-		"no-global-strict": 0
-	}
+  "globals": {
+    "GM_addStyle": true,
+    "$": true,
+    "jQuery": true,
+    "localStorage": true,
+    "window": true
+  },
+  "rules": {
+    "new-cap": 1,
+    "quotes": [1, "single", "avoid-escape"],
+    "no-global-strict": 0
+  }
 }
