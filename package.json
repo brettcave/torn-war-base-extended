@@ -1,0 +1,17 @@
+{
+  "name": "torn-war-base-retro-style",
+  "version": "1.1.0",
+  "description": "Brings back the old war base layout",
+  "main": "Gruntfile.js",
+  "dependencies": {},
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-copy": "^0.5.0",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-eslint": "^0.6.0",
+    "grunt-properties-reader": "^0.1.3"
+  },
+  "author": "Vinkuun",
+  "license": "MIT",
+  "private": true
+}
