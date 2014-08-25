@@ -50,6 +50,29 @@ var $filterStatusElement;
  * @param {jQuery-Object} $panel Main panel
  */
 function addWarBaseFilter($panel) {
+  var $warList = $('.f-war-list');
+  var $statusElement = $('<p>', {text: 'The war base is currently hidden. Click the bar above to show it.', style: 'text-align: center; margin-top: 4px; font-weight: bold'}).hide();
+
+  $('.f-msg')
+  .css('cursor', 'pointer')
+  .on('click', function() {
+    if (shouldHideWarBase()) {
+      localStorage.vinkuunHideWarBase = false;
+      $warList.show();
+      $statusElement.hide();
+    } else {
+      localStorage.vinkuunHideWarBase = true;
+      $warList.hide();
+      $statusElement.show();
+    }})
+  .attr('title', 'Click to show/hide the war base')
+  .after($statusElement);
+
+  if (shouldHideWarBase()) {
+    $warList.hide();
+    $statusElement.show();
+  }
+
   // load saved war base filter settings
   warBaseFilter = JSON.parse(localStorage.vinkuunWarBaseFilter || '{}');
   warBaseFilter.status = warBaseFilter.status || {};
@@ -59,6 +82,11 @@ function addWarBaseFilter($panel) {
   addFilterPanel($panel);
 
   applyFilter();
+}
+
+// returns true if the layout is enabled, false if not
+function shouldHideWarBase() {
+  return JSON.parse(localStorage.vinkuunHideWarBase || 'false');
 }
 
 /**
