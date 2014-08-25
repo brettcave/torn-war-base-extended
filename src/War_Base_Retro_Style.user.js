@@ -3,7 +3,7 @@
 // @namespace   vinkuun.warBaseRetroStyle
 // @author      Vinkuun [1791283]
 // @description Brings back the old war base layout, adds a filter to the war base, enables enemy tagging
-// @include     *.torn.com/factions.php?step=your
+// @include     *.torn.com/factions.php?step=your*
 // @version     2.0.0
 // @require     http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js
 // @grant       GM_addStyle
@@ -58,20 +58,7 @@ function addWarBaseFilter($panel) {
 
   addFilterPanel($panel);
 
-  // observer used to apply the filter after the war base was loaded via ajax
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      // The main content is being added to the div
-      if (mutation.addedNodes.length === 18) {
-        applyFilter();
-      }
-    });    
-  });
-
-  // start listening for changes
-  var observerTarget = $MAIN[0];
-  var observerConfig = { attributes: false, childList: true, characterData: false };
-  observer.observe(observerTarget, observerConfig);
+  applyFilter();
 }
 
 /**
@@ -130,7 +117,7 @@ function addFilterPanel($panel) {
 
   // status: traveling filter
   var $travelingCheckbox = $('<input>', {type: 'checkbox'})
-    .on('click', function() {
+    .on('change', function() {
       reapplyFilter({status: {traveling: this.checked}});
     });
   var $travelingElement = $('<label>', {text: 'traveling'}).prepend($travelingCheckbox);
@@ -138,7 +125,7 @@ function addFilterPanel($panel) {
 
   // status: okay filter
   var $okayCheckbox = $('<input>', {type: 'checkbox'})
-    .on('click', function() {
+    .on('change', function() {
       reapplyFilter({status: {okay: this.checked}});
     });
   var $okayElement = $('<label>', {text: 'okay'}).prepend($okayCheckbox);
@@ -146,7 +133,7 @@ function addFilterPanel($panel) {
 
   // status: hospital filter
   var $hospitalTextfield = $('<input>', {type: 'number', style: 'width: 50px'})
-    .on('keyup', function() {
+    .on('change', function() {
       if (isNaN(this.value)) {
         reapplyFilter({status: {hospital: false}});
       } else {
@@ -191,6 +178,64 @@ function remainingHospitalTime(text) {
 }
 
 // ============================================================================
+// --- FEATURE: Enemy tagging
+// ============================================================================
+
+var TAGS = {
+  tbd: {text: 'Difficulty', color: 'inherit'},
+  easy: {text: 'Easy', color:'rgba(161, 248, 161, 1)'},
+  medium: {text: 'Medium', color:'rgba(231, 231, 104, 1)'},
+  impossible: {text: 'Impossible', color:'rgba(242, 140, 140, 1)'}
+};
+
+var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
+ 
+function addEnemyTagging() {
+  GM_addStyle(
+    'select.vinkuun-enemeyDifficulty { font-size: 12px; vertical-align: text-bottom }' +
+    '.member-list li div.status, .member-list li div.act-cont { font-weight: bold }'
+  );
+
+  var $list = $MAIN.find('.member-list > li').each(function() {
+    var $this = $(this);
+
+    var id = $this.find('.user.name').eq(0).attr('href').match(/XID=(\d+)/)[1];
+
+    $this.find('.member-icons').prepend(createDropdown($this, id));
+  });
+}
+
+function createDropdown($li, id) {
+  var $dropdown = $('<select>', {'class': 'vinkuun-enemeyDifficulty'}).on('change', function() {
+    enemyTags[id] = $(this).val();
+
+    localStorage.vinkuunEnemyTags = JSON.stringify(enemyTags);
+
+    updateColor($li, id);
+  });
+
+  $.each(TAGS, function(key, value) {
+    var $el = $('<option>', {value: key, text: value.text});
+
+    if (enemyTags[id] && key === enemyTags[id]) {
+      $el.attr('selected', 'selected');
+    }
+
+    $dropdown.append($el);
+  });
+
+  updateColor($li, id);
+
+  return $dropdown;
+}
+
+function updateColor($li, id) {
+  if (enemyTags[id]) {
+    $li.css('background-color', TAGS[enemyTags[id]].color);
+  }
+}
+
+// ============================================================================
 // --- MAIN
 // ============================================================================
 
@@ -214,21 +259,50 @@ function addUrlChangeCallback($element) {
   window.onhashchange = urlChangeCallback;
 }
 
+/**
+ * Initialises the script's features
+ */
+function init() {
+  var $warBaseExtendedPanel = $('#vinkuun-extendedWarBasePanel');
 
-try {
-  var $title = $('<div>', { class: 'title-black m-top10 title-toggle tablet active top-round', text: 'War Base Extended' });
+  if ($warBaseExtendedPanel.length !== 0) {
+    $warBaseExtendedPanel.empty();
+  } else {
+    $warBaseExtendedPanel = $('<div>', { id:'vinkuun-extendedWarBasePanel' });
+    $MAIN.before($warBaseExtendedPanel);
+  }
+
+  var $title = $('<div>', { 'class': 'title-black m-top10 title-toggle tablet active top-round', text: 'War Base Extended' });
   $MAIN.before($title);
 
-  var $panel = $('<div>', {class: 'cont-gray10 bottom-round cont-toggle', id:'vinkuun-extendedWarBasePanel'});
+  var $panel = $('<div>', { 'class': 'cont-gray10 bottom-round cont-toggle' });
   $MAIN.before($panel);
 
-  var $warBaseExtendedPanel = $('<div>').append($title).append($panel);
-  $MAIN.before($warBaseExtendedPanel);
+  $warBaseExtendedPanel.append($title).append($panel);
 
   enableWarBaseLayout();
   addWarBaseFilter($panel);
+  addEnemyTagging();
 
   addUrlChangeCallback($warBaseExtendedPanel);
+}
+
+
+try {
+  // observer used to apply the filter after the war base was loaded via ajax
+  var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      // The main content is being added to the div
+      if (mutation.addedNodes.length === 18) {
+        init();
+      }
+    });
+  });
+
+  // start listening for changes
+  var observerTarget = $MAIN[0];
+  var observerConfig = { attributes: false, childList: true, characterData: false };
+  observer.observe(observerTarget, observerConfig);
 } catch (err) {
   console.log(err);
 }
