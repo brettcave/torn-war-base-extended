@@ -1,6 +1,11 @@
 War Base Retro Style
 ====================
 
-Brings back the old war base layout
-
 This is a userscript for [Torn](http://www.torn.com).
+
+Features:
+---------
+* Brings back the old layout
+* Enemy Tagging
+* War Base Filtering
+* War Base Collapsing by clicking the red bar
