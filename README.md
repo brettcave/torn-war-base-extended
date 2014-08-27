@@ -1,4 +1,4 @@
-War Base Retro Style
+War Base Extended
 ====================
 
 This is a userscript for [Torn](http://www.torn.com).
