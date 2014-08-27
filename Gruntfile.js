@@ -13,7 +13,7 @@ module.exports = function(grunt) {
     copy: {
       main: {
         files: [
-          { src: ['src/War_Base_Retro_Style.user.js'], dest: '<%= config.outputDir %>/War_Base_Retro_Style.user.js' }
+          { src: ['src/War_Base_Extended.user.js'], dest: '<%= config.outputDir %>/War_Base_Extended.user.js' }
         ]
       }
     },
