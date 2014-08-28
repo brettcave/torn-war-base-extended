@@ -4,17 +4,14 @@
 // @author      Vinkuun [1791283]
 // @description Brings back the old war base layout, adds a filter to the war base, enables enemy tagging
 // @include     *.torn.com/factions.php?step=your*
-// @version     2.2.0
-// @require     http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js
-// @grant       GM_addStyle
+// @version     2.3.0
+// @grant       none
 // ==/UserScript==
 
 'use strict';
 
-this.$ = this.jQuery = jQuery.noConflict(true);
-
 // global CSS
-GM_addStyle(
+addCss(
   '#vinkuun-extendedWarBasePanel { line-height: 2em }' +
   '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 2px; border: 1px solid #fff; border-radius: 5px }' +
   '#vinkuun-extendedWarBasePanel input { margin-right: 5px; vertical-align: text-bottom }' +
@@ -25,10 +22,28 @@ GM_addStyle(
 var $MAIN = $('#faction-main');
 
 // ============================================================================
+// --- Helper functions
+// ============================================================================
+
+/**
+ * Adds CSS to the HEAD of the document
+ * @param {string} css
+ */
+function addCss(css) {
+  var head = document.head,
+    style = document.createElement('style');
+
+  style.type = 'text/css';
+  style.appendChild(document.createTextNode(css));
+
+  head.appendChild(style);
+}
+
+// ============================================================================
 // --- FEATURE: War Base Layout
 // ============================================================================
 function enableWarBaseLayout() {
-  GM_addStyle(
+  addCss(
     '.oldWarBase .f-war-list { margin-top: 10px }' +
     '.oldWarBase .f-war-list > li, .oldWarBase .f-war-list > li.first-in-row { margin: 10px 0; padding: 0; height: auto; width: auto }' +
     '.oldWarBase .f-war-list > li .status-wrap { display: none }' +
@@ -141,7 +156,7 @@ function applyFilter() {
  * Panel to configure the filter - will be added to the main panel
  */
 function addFilterPanel($panel) {
-  $panel.append("Hide enemies who are ");
+  $panel.append('Hide enemies who are ');
 
   // status: traveling filter
   var $travelingCheckbox = $('<input>', {type: 'checkbox'})
@@ -219,12 +234,12 @@ var TAGS = {
 var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
  
 function addEnemyTagging() {
-  GM_addStyle(
+  addCss(
     'select.vinkuun-enemeyDifficulty { font-size: 12px; vertical-align: text-bottom }' +
     '.member-list li div.status, .member-list li div.act-cont { font-weight: bold }'
   );
 
-  var $list = $MAIN.find('.member-list > li').each(function() {
+  $MAIN.find('.member-list > li').each(function() {
     var $this = $(this);
 
     var id = $this.find('.user.name').eq(0).attr('href').match(/XID=(\d+)/)[1];

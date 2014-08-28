@@ -1,14 +1,19 @@
 {
   "globals": {
-    "GM_addStyle": true,
     "$": true,
-    "jQuery": true,
     "localStorage": true,
-    "window": true
+    "window": true,
+    "MutationObserver": true,
+    "console": true,
+    "document": true
   },
   "rules": {
     "new-cap": 1,
     "quotes": [1, "single", "avoid-escape"],
-    "no-global-strict": 0
+    "no-global-strict": 0,
+    "no-unused-vars": [2, {"vars": "all", "args": "none"}],
+    "no-use-before-define": [2, "nofunc"],
+    "no-console": 0,
+    "no-extend-native": 0
   }
 }
