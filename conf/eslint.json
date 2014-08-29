@@ -5,7 +5,8 @@
     "window": true,
     "MutationObserver": true,
     "console": true,
-    "document": true
+    "document": true,
+    "_": true
   },
   "rules": {
     "new-cap": 1,
