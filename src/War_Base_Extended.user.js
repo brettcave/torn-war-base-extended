@@ -16,13 +16,20 @@
 // global CSS
 addCss(
   '#vinkuun-extendedWarBasePanel { line-height: 2em }' +
-  '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 2px; border: 1px solid #fff; border-radius: 5px }' +
+  '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 2px; margin: 0 4px; border: 1px solid #fff; border-radius: 5px }' +
   '#vinkuun-extendedWarBasePanel input { margin-right: 5px; vertical-align: text-bottom }' +
   '#vinkuun-extendedWarBasePanel input[type="number"] { vertical-align: baseline; line-height: 1.3em }' +
   '#vinkuun-extendedWarBasePanel { padding: 4px; }'
 );
 
 var $MAIN = $('#faction-main');
+
+var ENEMY_TAGS = {
+  tbd: {text: 'Not set'},
+  easy: {text: 'Easy', color:'rgba(161, 248, 161, 1)'},
+  medium: {text: 'Medium', color:'rgba(231, 231, 104, 1)'},
+  impossible: {text: 'Impossible', color:'rgba(242, 140, 140, 1)'}
+};
 
 // ============================================================================
 // --- Helper functions
@@ -137,6 +144,7 @@ function addWarBaseFilter($panel) {
     rowToData: function(row) {
       var data = {};
 
+      data.id = row.children[0].children[2].children[0].href.match(/XID=(\d+)/)[1];
       data.status = row.children[3].children[0].textContent;
 
       if (data.status === 'Hospital') {
@@ -217,6 +225,35 @@ function addWarBaseFilter($panel) {
     }
   }));
 
+  filterManager.registerFilter(new Filter({
+    id: 'difficulty',
+    element: function() {
+      var thisFilter = this;
+
+      var changeCallback = function() {
+        thisFilter.config[this.value] = this.checked;
+        thisFilter.callback(thisFilter);
+      };
+
+      var $label = $('<p>', {text: 'Hide enemies with a difficulty of '});
+
+      _(ENEMY_TAGS).forEach(function(tag, difficulty) {
+        $label.append(
+          $('<label>', {text: tag.text})
+            .append($('<input>', {type: 'checkbox', value: difficulty, checked: thisFilter.config[difficulty]}).on('change', changeCallback))
+        );
+      });
+
+      
+      return $label;
+    },
+    test: function(player) {
+      var difficulty = enemyTags[player.id] || 'tbd';
+
+      return this.config[difficulty] || false;
+    }
+  }));
+
   // add each <li>-element of a player to the FilterManager
   $MAIN.find('ul.f-war-list ul.member-list > li').each(function() {
     filterManager.addRow(this);
@@ -227,7 +264,8 @@ function addWarBaseFilter($panel) {
     .append(filterManager.getFilterElement('statusOk')).append(' or ')
     .append(filterManager.getFilterElement('statusTraveling')).append(' or ')
     .append(filterManager.getFilterElement('statusHospital'))
-    .append(' (').append(filterManager.$hiddenCount).append(' enemies are hidden by the filter.)');
+    .append(filterManager.getFilterElement('difficulty'))
+    .append($('<p>', {text: ' enemies are hidden by the filter.'}).prepend(filterManager.$hiddenCount));
 
   filterManager.applyFilters();
 }
@@ -348,18 +386,11 @@ function parseRemainingHospitalTime(text) {
 // --- FEATURE: Enemy tagging
 // ============================================================================
 
-var TAGS = {
-  tbd: {text: 'Difficulty', color: 'inherit'},
-  easy: {text: 'Easy', color:'rgba(161, 248, 161, 1)'},
-  medium: {text: 'Medium', color:'rgba(231, 231, 104, 1)'},
-  impossible: {text: 'Impossible', color:'rgba(242, 140, 140, 1)'}
-};
-
 var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
  
 function addEnemyTagging() {
   addCss(
-    'select.vinkuun-enemeyDifficulty { font-size: 12px; vertical-align: text-bottom }' +
+    'select.vinkuun-enemyDifficulty { font-size: 12px; vertical-align: text-bottom }' +
     '.member-list li div.status, .member-list li div.act-cont { font-weight: bold }'
   );
 
@@ -373,7 +404,7 @@ function addEnemyTagging() {
 }
 
 function createDropdown($li, id) {
-  var $dropdown = $('<select>', {'class': 'vinkuun-enemeyDifficulty'}).on('change', function() {
+  var $dropdown = $('<select>', {'class': 'vinkuun-enemyDifficulty'}).on('change', function() {
     enemyTags[id] = $(this).val();
 
     localStorage.vinkuunEnemyTags = JSON.stringify(enemyTags);
@@ -381,7 +412,7 @@ function createDropdown($li, id) {
     updateColor($li, id);
   });
 
-  $.each(TAGS, function(key, value) {
+  $.each(ENEMY_TAGS, function(key, value) {
     var $el = $('<option>', {value: key, text: value.text});
 
     if (enemyTags[id] && key === enemyTags[id]) {
@@ -398,7 +429,8 @@ function createDropdown($li, id) {
 
 function updateColor($li, id) {
   if (enemyTags[id]) {
-    $li.css('background-color', TAGS[enemyTags[id]].color);
+    // set a color or remove this rule
+    $li.css('background-color', ENEMY_TAGS[enemyTags[id]].color || '');
   }
 }
 
