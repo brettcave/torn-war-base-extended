@@ -24,6 +24,129 @@ var ENEMY_TAGS = {
 
 var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
 
+// Config for personal stats
+
+/**
+ * Transforms the stat to a decimal number. Stripped characters: ,$
+ * @param  {string} text Value of the stat
+ * @return {number}      decimal number
+ */
+function parseNumber(text) {
+  return parseFloat(text.replace(/[\$,]/g, ''), 10);
+}
+var PERSONAL_STATS = [
+  'Attacks won',
+  'Attacks lost',
+  'Attacks stalemated',
+  'Defends won',
+  'Defends lost',
+  'Defends stalemated',
+  'Win/Loss ratio',
+  'Times ran away',
+  'Foes ran away',
+  'Best kill streak',
+  'Critical hits',
+  'Rounds fired',
+  'Stealth attacks',
+  'Money mugged',
+  'Largest mug',
+  'Highest level beaten',
+  'Total respect gained',
+  'Items bought from market',
+  'Auctions won',
+  'Points bought',
+  'Items auctioned',
+  'Points sold',
+  'Items bought from Big Al\'s',
+  'Items sent',
+  'Trades made',
+  'Bazaar customers',
+  'Bazaar sales',
+  'Bazaar income',
+  'Times jailed',
+  'People busted',
+  'Failed busts',
+  'People bailed',
+  'Bail fees',
+  'Times in hospital',
+  'Medical items used',
+  'People revived',
+  'Revives received',
+  'Medical items stolen',
+  'Heavy artillery',
+  'Machine guns',
+  'Rifles',
+  'Sub machine guns',
+  'Shotguns',
+  'Pistols',
+  'Temporary weapons',
+  'Piercing weapons',
+  'Slashing weapons',
+  'Clubbed weapons',
+  'Machinery',
+  'Mails sent',
+  'Mails sent to friends',
+  'Mails sent to faction',
+  'Mails sent to colleagues',
+  'Mails sent to spouse',
+  'Classified ads placed',
+  'Personals placed',
+  'Criminal offences',
+  'Selling illegal goods',
+  'Theft',
+  'Auto theft',
+  'Drug deals',
+  'Computer crimes',
+  'Fraud',
+  'Murder',
+  'Other',
+  'Bounties placed',
+  'Spent on bounties',
+  'Bounties collected',
+  'Money rewarded',
+  'Bounties received',
+  'Items found',
+  'Items trashed',
+  'Dump searches',
+  'Items found in dump',
+  'Times travelled',
+  'Items bought abroad',
+  'Hunting skill',
+  'Argentina',
+  'Mexico',
+  'Dubai',
+  'Hawaii',
+  'Japan',
+  'United Kingdom',
+  'South Africa',
+  'Switzerland',
+  'China',
+  'Canada',
+  'Cayman Islands',
+  'Drugs used',
+  'Times overdosed',
+  'Cannabis taken',
+  'Ecstasy taken',
+  'Ketamine taken',
+  'LSD taken',
+  'Opium taken',
+  'Shrooms taken',
+  'Speed taken',
+  'PCP taken',
+  'Xanax taken',
+  'Vicodin taken',
+  'Logins',
+  //'Time played',
+  'Merits bought',
+  'Energy refills',
+  'Times trained by director',
+  'Army spying',
+  'Stat enhancers used',
+  'Viruses coded',
+  'Days been a donator',
+  'Times voted',
+];
+
 // ============================================================================
 // --- Helper functions
 // ============================================================================
@@ -42,6 +165,10 @@ function addCss(css) {
   head.appendChild(style);
 }
 
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
 // ============================================================================
 // --- Personal stats helper function
 // ============================================================================
@@ -51,27 +178,38 @@ function addCss(css) {
  * @param  {String} id         ID of the player
  * @param  {Function} callback Function which should be called after the stats have been read
  */
-function getPersonalStats(id, callback) {
-  var stats = {};
+function updatePlayerStats(id) {
+  return $.ajax({type: 'GET', url: 'personalstats.php?ID=' + id}).then(function(page) {
+    var $page = $(page);
 
-  $.ajax({
-    type: 'GET',
-    url: 'personalstats.php?ID=' + id,
-    success: function(page) {
-      var $page = $(page);
+    var personalStats = [];
 
-      var stats = {};
+    $page.find('.statistic ul.right li').each(function() {
+      var name = this.children[0].innerHTML;
+      name = name.slice(0, name.length - 1); // remove colon
 
-      $page.find('.statistic ul.right li').each(function() {
-        var name = this.children[0].innerHTML;
-        name = name.slice(0, name.length - 1); // remove colon
+      // if this is a known stat => add to return data
+      var statIndex = _.indexOf(PERSONAL_STATS, name);
+      if (statIndex !== -1) {
+        personalStats[statIndex] = parseNumber(this.children[1].textContent);
+      }
+    });
 
-        stats[name] = this.children[1].textContent;
-      });
-
-      callback(stats);
-    }
+    setPlayerStats(id, {personalStats: personalStats});
   });
+}
+
+var cached_player_stats = {};
+
+function setPlayerStats(id, stats) {
+  stats.date = new Date().getTime();
+
+  localStorage['vinkuun.stats.' + id] = JSON.stringify(stats);
+  cached_player_stats[id] = stats;
+}
+
+function getPlayerStats(id) {
+  return cached_player_stats[id] || JSON.parse(localStorage['vinkuun.stats.' + id]);
 }
 
 // ============================================================================
@@ -216,6 +354,10 @@ function FilterManager(options) {
       localStorage[options.configKey] = JSON.stringify(_config);
     }
   };
+
+  this.getRowData = function() {
+    return _.pluck(_rows, 'rowData');
+  };
 }
 
 function Filter(id, test) {
@@ -258,6 +400,11 @@ function addWarBaseFilter($panel) {
     configKey: 'vinkuun.warBase.filters'
   });
 
+  // add each <li>-element of a player to the FilterManager
+  $MAIN.find('ul.f-war-list ul.member-list > li').eq(1).each(function() {
+    filterManager.addRow(this);
+  });
+
   filterManager.registerFilter('statusOk',
     function(player, config) {
       return config.active && player.status === 'Okay';
@@ -286,6 +433,33 @@ function addWarBaseFilter($panel) {
       return config[playerDifficulty] || false;
     },
     {}
+  );
+
+  filterManager.registerFilter('personalStats',
+    function(player, config) {
+      if (config.active) {
+        var stats = getPlayerStats(player.id);
+        if (stats) {
+          var hidePlayer = false;
+
+          _.chain(config.stats)
+            .each(function(lowerBound, statIndex) {
+              console.log(PERSONAL_STATS[statIndex], lowerBound, stats.personalStats[statIndex], player.id);
+              if (lowerBound < stats.personalStats[statIndex]) {
+                hidePlayer = true;
+                return false; // break each
+              }
+            });
+
+          return hidePlayer;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    },
+    {active: false, stats: []} // stats will be combined with OR
   );
 
   // FILTER: status = ok
@@ -340,19 +514,62 @@ function addWarBaseFilter($panel) {
     );
   });
 
+  // FILTER: personal stats
+  var $personalStatsFilter = $('<div>').append(($('<p>', {text: 'Personal Stats filter'})));
+  var $personalStatsUpdateProgress = $('<span>');
+  var $personalStatsUpdateButton = $('<button>', {text: 'Update stats'})
+    .appendTo($personalStatsFilter)
+    .after($personalStatsUpdateProgress)
+    .on('click', function() {
+      $personalStatsUpdateProgress.text('Updating - please wait...');
+
+      var rowData = filterManager.getRowData();
+
+      var tasks = _.map(rowData, function(player, index) {
+        return updatePlayerStats(player.id);
+      });
+
+      Promise.all(tasks).then(function() {
+        $personalStatsUpdateProgress.text('All stats are now up-to-date.');
+
+        filterManager.trigger('personalStats');
+      });
+    });
+  var $personalStatsTable = $('<table>').appendTo($personalStatsFilter);
+
+  _(PERSONAL_STATS).each(function(stat, statIndex) {
+    var statValue = filterManager.config('personalStats').stats[statIndex] || '';
+
+    var $statValueField = $('<input>', {type: 'text', value: statValue})
+      .on('change', function() {
+        var newValue = this.value;
+
+        // TODO: promise einbauen, da trigger() gerufen wird, bevor config() fertig ist!
+        filterManager.config('personalStats', function(filterConfig) {
+          if (newValue !== '' && isNumber(newValue)) {
+            filterConfig.stats[statIndex] = parseInt(newValue, 10);
+          } else {
+            delete filterConfig.stats[statIndex];
+          }
+        });
+        filterManager.trigger('personalStats');
+      });
+
+    var $row = $('<tr>')
+      .append($('<td>', {text: stat}))
+      .append($('<td>').append($statValueField)); // stat name
+
+    $personalStatsTable.append($row);
+  });
+
   $panel
+    .append($('<p>', {text: ' enemies are hidden by the filter.'}).prepend(filterManager.$hiddenCount))
     .append($('<p>', {text: 'Hide enemies who are '})
       .append($statusOkFilter).append(' or ')
       .append($statusTravelingFilter).append(' or ')
       .append($statusHospitalFilter))
     .append($difficultyFilter)
-    .append($personalStatsFilter)
-    .append($('<p>', {text: ' enemies are hidden by the filter.'}).prepend(filterManager.$hiddenCount));
-
-  // add each <li>-element of a player to the FilterManager
-  $MAIN.find('ul.f-war-list ul.member-list > li').each(function() {
-    filterManager.addRow(this);
-  });
+    .append($personalStatsFilter);
 
   filterManager.triggerAll();
 }
