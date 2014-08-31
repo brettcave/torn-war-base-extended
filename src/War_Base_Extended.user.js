@@ -13,15 +13,6 @@
 
 'use strict';
 
-// global CSS
-addCss(
-  '#vinkuun-extendedWarBasePanel { line-height: 2em }' +
-  '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 2px; margin: 0 4px; border: 1px solid #fff; border-radius: 5px }' +
-  '#vinkuun-extendedWarBasePanel input { margin-right: 5px; vertical-align: text-bottom }' +
-  '#vinkuun-extendedWarBasePanel input[type="number"] { vertical-align: baseline; line-height: 1.3em }' +
-  '#vinkuun-extendedWarBasePanel { padding: 4px; }'
-);
-
 var $MAIN = $('#faction-main');
 
 var ENEMY_TAGS = {
@@ -30,6 +21,8 @@ var ENEMY_TAGS = {
   medium: {text: 'Medium', color:'rgba(231, 231, 104, 1)'},
   impossible: {text: 'Impossible', color:'rgba(242, 140, 140, 1)'}
 };
+
+var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
 
 // ============================================================================
 // --- Helper functions
@@ -132,150 +125,12 @@ function shouldHideWarBase() {
 // ============================================================================
 // --- FEATURE: War base filter
 // ============================================================================
-var warBaseFilter;
-var $filterStatusElement;
-
-/**
- * Adds the filter panel to the war base extended main panel
- * @param {jQuery-Object} $panel Main panel
- */
-function addWarBaseFilter($panel) {
-  var filterManager = new FilterManager({
-    rowToData: function(row) {
-      var data = {};
-
-      data.id = row.children[0].children[2].children[0].href.match(/XID=(\d+)/)[1];
-      data.status = row.children[3].children[0].textContent;
-
-      if (data.status === 'Hospital') {
-        data.hospitalTimeLeft = parseRemainingHospitalTime(row.children[1].querySelector('#icon15').title);
-      }
-
-      return data;
-    },
-    showRow: function(rowElement) {
-      rowElement.style.display = 'block';
-    },
-    hideRow: function(rowElement) {
-      rowElement.style.display = 'none';
-    },
-    config: loadFilterConfig()
-  });
-
-  filterManager.registerFilter(new Filter({
-    id: 'statusOk',
-    element: function() {
-      var thisFilter = this;
-
-      var $okayCheckbox = $('<input>', {type: 'checkbox'})
-        .on('change', function() {
-          thisFilter.config = {active: this.checked};
-          thisFilter.callback(thisFilter);
-        });
-
-      $okayCheckbox[0].checked = thisFilter.config.active || false;
-
-      return $('<label>', {text: 'okay'}).prepend($okayCheckbox);
-    },
-    test: function(player) {
-        return this.config.active && player.status === 'Okay';
-    }
-  }));
-
-  filterManager.registerFilter(new Filter({
-    id: 'statusTraveling',
-    element: function() {
-      var thisFilter = this;
-
-      var $okayCheckbox = $('<input>', {type: 'checkbox'})
-        .on('change', function() {
-          thisFilter.config = {active: this.checked};
-          thisFilter.callback(thisFilter);
-        });
-
-      $okayCheckbox[0].checked = thisFilter.config.active || false;
-
-      return $('<label>', {text: 'traveling'}).prepend($okayCheckbox);
-    },
-    test: function(player) {
-        return this.config.active && player.status === 'Traveling';
-    }
-  }));
-
-  filterManager.registerFilter(new Filter({
-    id: 'statusHospital',
-    element: function() {
-      var thisFilter = this;
-
-      var $hospitalTextfield = $('<input>', {type: 'number', style: 'width: 50px', value: this.config.timeLeft || ''})
-        .on('change', function() {
-          if (isNaN(this.value)) {
-            thisFilter.config = {active: false};
-          } else {
-            thisFilter.config = {active: true, timeLeft: parseInt(this.value, 10)};
-            thisFilter.callback(thisFilter);
-          }
-        });
-      return $('<label>', {text: 'in hospital for more than '})
-        .append($hospitalTextfield)
-        .append(' minutes');
-    },
-    test: function(player) {
-        return this.config.active && player.status === 'Hospital' && player.hospitalTimeLeft > this.config.timeLeft;
-    }
-  }));
-
-  filterManager.registerFilter(new Filter({
-    id: 'difficulty',
-    element: function() {
-      var thisFilter = this;
-
-      var changeCallback = function() {
-        thisFilter.config[this.value] = this.checked;
-        thisFilter.callback(thisFilter);
-      };
-
-      var $label = $('<p>', {text: 'Hide enemies with a difficulty of '});
-
-      _(ENEMY_TAGS).forEach(function(tag, difficulty) {
-        $label.append(
-          $('<label>', {text: tag.text})
-            .append($('<input>', {type: 'checkbox', value: difficulty, checked: thisFilter.config[difficulty]}).on('change', changeCallback))
-        );
-      });
-
-      
-      return $label;
-    },
-    test: function(player) {
-      var difficulty = enemyTags[player.id] || 'tbd';
-
-      return this.config[difficulty] || false;
-    }
-  }));
-
-  // add each <li>-element of a player to the FilterManager
-  $MAIN.find('ul.f-war-list ul.member-list > li').each(function() {
-    filterManager.addRow(this);
-  });
-
-  $panel
-    .append('Hide enemies who are ')
-    .append(filterManager.getFilterElement('statusOk')).append(' or ')
-    .append(filterManager.getFilterElement('statusTraveling')).append(' or ')
-    .append(filterManager.getFilterElement('statusHospital'))
-    .append(filterManager.getFilterElement('difficulty'))
-    .append($('<p>', {text: ' enemies are hidden by the filter.'}).prepend(filterManager.$hiddenCount));
-
-  filterManager.applyFilters();
-}
-
 function FilterManager(options) {
-  var filters = {};
-  var rows = [];
-  var that = this;
+  var _filters = {};
+  var _rows = [];
+  var _config = JSON.parse(localStorage[options.configKey] || '{}');
 
-  this.config = options.config;
+  var that = this;
 
   this.showRow = options.showRow;
   this.hideRow = options.hideRow;
@@ -284,18 +139,15 @@ function FilterManager(options) {
 
   /**
    * Applies a list of filters to the rows
-   * If no list is supplied, every registerered filter will be used
    * @param  {array} filters Filters to apply
    */
-  this.applyFilters = function(activeFilters) {
-    activeFilters = activeFilters || _.values(filters);
-
+  var applyFilters = function(activeFilters) {
     var numOfHiddenRows = 0;
 
-    _(rows).forEach(function(row) {
+    _(_rows).forEach(function(row) {
       // apply each supplied filter
-      _(filters).each(function(filter) {
-        if (filter.test(row.rowData)) {
+      _(activeFilters).each(function(filter) {
+        if (filter.test(row.rowData, _config[filter.id])) {
           row.activeFilters[filter.id] = true;
         } else {
           delete row.activeFilters[filter.id];
@@ -316,58 +168,193 @@ function FilterManager(options) {
     that.$hiddenCount.text(numOfHiddenRows);
   };
 
-  this.reapplyFilter = function(filter) {
-    that.config[filter.id] = filter.config;
-
-    storeFilterConfig(that.config);
-    
-    that.applyFilters([filter]);
+  this.trigger = function(filterId) {
+    applyFilters([_filters[filterId]]);
   };
 
-  this.registerFilter = function(filter) {
-    filter.setup(that.config[filter.id], that.reapplyFilter);
+  this.triggerAll = function() {
+    applyFilters(_.values(_filters));
+  };
 
-    filters[filter.id] = filter;
+  this.registerFilter = function(id, testFunction, initialConfig) {
+    if (_config[id] === undefined) {
+      _config[id] = initialConfig;
+    }
+
+    _filters[id] = new Filter(id, testFunction);
   };
 
   this.rowToData = options.rowToData || function(row) { return row; };
 
   this.addRow = function(row) {
-    rows.push({
+    _rows.push({
       rowData: that.rowToData(row),
       originalRow: row,
       activeFilters: {}
     });
   };
 
-  this.getFilterElement = function(id) {
-    if (filters[id]) {
-      return filters[id].element;
-    }
-    else {
-      throw 'Invalid ID';
+  /**
+   * 1. Returns the config of a filter, if called with only the 1st argument
+   * 2. If both arguments are supplied: updates the filter config
+   * 
+   * @param  {String} id                    filter id
+   * @param  {Object|Function} filterConfig new filter config, or function which manipulates the config
+   * @return {Object}                       current filter config
+   */
+  this.config = function(id, filterConfig) {
+    if (filterConfig === undefined) {
+      return _config[id];
+    } else {
+      if (typeof filterConfig === 'function') {
+        filterConfig(_config[id]);
+      } else {
+        _config[id] = filterConfig; // TODO: alte config erweitern
+      }
+      
+      // save config to localStorage
+      localStorage[options.configKey] = JSON.stringify(_config);
     }
   };
 }
 
-function Filter(options) {
-  this.id = options.id;
-  this.test = options.test;
+function Filter(id, test) {
+  this.id = id;
+  this.test = test;
+}
 
-  this.setup = function(config, callback) {
-    this.config = config || {};
-    this.callback = callback;
+/**
+ * Adds the filter panel to the war base extended main panel
+ * @param {jQuery-Object} $panel Main panel
+ */
+function addWarBaseFilter($panel) {
+  addCss(
+    '#vinkuun-extendedWarBasePanel { line-height: 2em }' +
+    '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 2px; margin: 0 4px; border: 1px solid #fff; border-radius: 5px }' +
+    '#vinkuun-extendedWarBasePanel input { margin-right: 5px; vertical-align: text-bottom }' +
+    '#vinkuun-extendedWarBasePanel input[type="number"] { vertical-align: baseline; line-height: 1.3em }' +
+    '#vinkuun-extendedWarBasePanel { padding: 4px; }'
+  );
 
-    this.element = options.element.apply(this);
+  var filterManager = new FilterManager({
+    rowToData: function(row) {
+      var data = {};
+
+      data.id = row.children[0].children[2].children[0].href.match(/XID=(\d+)/)[1];
+      data.status = row.children[3].children[0].textContent;
+
+      if (data.status === 'Hospital') {
+        data.hospitalTimeLeft = parseRemainingHospitalTime(row.children[1].querySelector('#icon15').title);
+      }
+
+      return data;
+    },
+    showRow: function(rowElement) {
+      rowElement.style.display = 'block';
+    },
+    hideRow: function(rowElement) {
+      rowElement.style.display = 'none';
+    },
+    configKey: 'vinkuun.warBase.filters'
+  });
+
+  filterManager.registerFilter('statusOk',
+    function(player, config) {
+      return config.active && player.status === 'Okay';
+    },
+    {active: false}
+  );
+
+  filterManager.registerFilter('statusTraveling',
+    function(player, config) {
+      return config.active && player.status === 'Traveling';
+    },
+    {active: false}
+  );
+
+  filterManager.registerFilter('statusHospital',
+    function(player, config) {
+      return config.active && player.status === 'Hospital' && config.hospitalTimeLeft < player.hospitalTimeLeft;
+    },
+    {active: false, hospitalTimeLeft: ''}
+  );
+
+  filterManager.registerFilter('difficulty',
+    function(player, config) {
+      var playerDifficulty = enemyTags[player.id] || 'tbd';
+
+      return config[playerDifficulty] || false;
+    },
+    {}
+  );
+
+  // FILTER: status = ok
+  var $statusOkFilter = $('<label>', {text: 'okay'}).prepend(
+    $('<input>', {type: 'checkbox', checked: filterManager.config('statusOk').active})
+      .on('change', function() {
+        filterManager.config('statusOk', {active: this.checked});
+        filterManager.trigger('statusOk');
+      })
+  );
+
+  // FILTER: status = traveling
+  var $statusTravelingFilter = $('<label>', {text: 'traveling'}).prepend(
+    $('<input>', {type: 'checkbox', checked: filterManager.config('statusTraveling').active})
+      .on('change', function() {
+        filterManager.config('statusTraveling', {active: this.checked});
+        filterManager.trigger('statusTraveling');
+      })
+  );
+
+  // FILTER: status = hospital
+  var $statusHospitalFilter = $('<label>', {text: 'in hospital for more than ', title: 'Leave this field blank to disable this filter'})
+    .append(
+      $('<input>', {type: 'number', style: 'width: 50px', value: filterManager.config('statusHospital').hospitalTimeLeft})
+        .on('change', function() {
+          if (isNaN(this.value)) {
+            filterManager.config('statusHospital', {active: false, hospitalTimeLeft: ''});
+          } else {
+            filterManager.config('statusHospital', {active: true, hospitalTimeLeft: parseInt(this.value, 10)});
+          }
+
+          filterManager.trigger('statusHospital');
+        }))
+    .append(' minutes');
+
+  // FILTER: difficulty
+  var $difficultyFilter = $('<p>', {text: 'Hide enemies with a difficulty of '});
+  var changeCallback = function() {
+    var checkbox = this;
+    filterManager.config('difficulty', function(filterConfig) {
+      filterConfig[checkbox.value] = checkbox.checked;
+    });
+    filterManager.trigger('difficulty');
   };
-}
+  _(ENEMY_TAGS).forEach(function(tag, difficulty) {
+    $difficultyFilter.append(
+      $('<label>', {text: tag.text})
+        .append(
+          $('<input>', {type: 'checkbox', value: difficulty, checked: filterManager.config('difficulty')[difficulty] || false})
+            .on('change', changeCallback)
+        )
+    );
+  });
 
-function loadFilterConfig() {
-  return JSON.parse(localStorage['vinkuun.warBase.filters'] || '{}');
-}
+  $panel
+    .append($('<p>', {text: 'Hide enemies who are '})
+      .append($statusOkFilter).append(' or ')
+      .append($statusTravelingFilter).append(' or ')
+      .append($statusHospitalFilter))
+    .append($difficultyFilter)
+    .append($personalStatsFilter)
+    .append($('<p>', {text: ' enemies are hidden by the filter.'}).prepend(filterManager.$hiddenCount));
 
-function storeFilterConfig(config) {
-  localStorage['vinkuun.warBase.filters'] = JSON.stringify(config);
+  // add each <li>-element of a player to the FilterManager
+  $MAIN.find('ul.f-war-list ul.member-list > li').each(function() {
+    filterManager.addRow(this);
+  });
+
+  filterManager.triggerAll();
 }
 
 /**
@@ -385,8 +372,6 @@ function parseRemainingHospitalTime(text) {
 // ============================================================================
 // --- FEATURE: Enemy tagging
 // ============================================================================
-
-var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
  
 function addEnemyTagging() {
   addCss(
@@ -405,7 +390,7 @@ function addEnemyTagging() {
 
 function createDropdown($li, id) {
   var $dropdown = $('<select>', {'class': 'vinkuun-enemyDifficulty'}).on('change', function() {
-    enemyTags[id] = $(this).val();
+    enemyTags[id] = this.value;
 
     localStorage.vinkuunEnemyTags = JSON.stringify(enemyTags);
 

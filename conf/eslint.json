@@ -15,6 +15,7 @@
     "no-unused-vars": [2, {"vars": "all", "args": "none"}],
     "no-use-before-define": [2, "nofunc"],
     "no-console": 0,
-    "no-extend-native": 0
+    "no-extend-native": 0,
+    "no-underscore-dangle": 0
   }
 }

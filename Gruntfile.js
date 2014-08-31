@@ -5,9 +5,13 @@ module.exports = function(grunt) {
     pkg: grunt.file.readJSON('package.json'),
     config: grunt.file.readJSON('conf/env_config.json'),
     watch: {
-      scripts: {
+      copy: {
         files: ['src/*.js'],
         tasks: ['copy']
+      },
+      eslint: {
+        files: ['src/*.js'],
+        tasks: ['eslint']
       }
     },
     copy: {
