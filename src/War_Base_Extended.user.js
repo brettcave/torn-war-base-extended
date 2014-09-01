@@ -144,7 +144,7 @@ var PERSONAL_STATS = [
   'Stat enhancers used',
   'Viruses coded',
   'Days been a donator',
-  'Times voted',
+  'Times voted'
 ];
 
 // ============================================================================
@@ -199,17 +199,17 @@ function updatePlayerStats(id) {
   });
 }
 
-var cached_player_stats = {};
+var cachedPlayerStats = {};
 
 function setPlayerStats(id, stats) {
   stats.date = new Date().getTime();
 
   localStorage['vinkuun.stats.' + id] = JSON.stringify(stats);
-  cached_player_stats[id] = stats;
+  cachedPlayerStats[id] = stats;
 }
 
 function getPlayerStats(id) {
-  return cached_player_stats[id] || JSON.parse(localStorage['vinkuun.stats.' + id]);
+  return cachedPlayerStats[id] || JSON.parse(localStorage['vinkuun.stats.' + id]);
 }
 
 // ============================================================================
@@ -334,29 +334,27 @@ function FilterManager(options) {
 
   /**
    * 1. Returns the config of a filter, if called with only the 1st argument
-   * 2. If both arguments are supplied: updates the filter config
+   * 2. If both arguments are supplied: merges old and new filter config
    * 
-   * @param  {String} id                    filter id
-   * @param  {Object|Function} filterConfig new filter config, or function which manipulates the config
-   * @return {Object}                       current filter config
+   * @param  {String} id           filter id
+   * @param  {Object} filterConfig new filter config
+   * @return {Object}              current filter config
    */
-  this.config = function(id, filterConfig) {
-    if (filterConfig === undefined) {
-      return _config[id];
+  this.config = function(id, newConfig) {
+    if (newConfig !== undefined) {
+      _.assign(_config[id], newConfig);
+      this.saveConfig();
     } else {
-      if (typeof filterConfig === 'function') {
-        filterConfig(_config[id]);
-      } else {
-        _config[id] = filterConfig; // TODO: alte config erweitern
-      }
-      
-      // save config to localStorage
-      localStorage[options.configKey] = JSON.stringify(_config);
+      return _config[id];
     }
   };
 
   this.getRowData = function() {
     return _.pluck(_rows, 'rowData');
+  };
+
+  this.saveConfig = function() {
+    localStorage[options.configKey] = JSON.stringify(_config);
   };
 }
 
@@ -401,7 +399,7 @@ function addWarBaseFilter($panel) {
   });
 
   // add each <li>-element of a player to the FilterManager
-  $MAIN.find('ul.f-war-list ul.member-list > li').eq(1).each(function() {
+  $MAIN.find('ul.f-war-list ul.member-list > li').each(function() {
     filterManager.addRow(this);
   });
 
@@ -498,10 +496,8 @@ function addWarBaseFilter($panel) {
   // FILTER: difficulty
   var $difficultyFilter = $('<p>', {text: 'Hide enemies with a difficulty of '});
   var changeCallback = function() {
-    var checkbox = this;
-    filterManager.config('difficulty', function(filterConfig) {
-      filterConfig[checkbox.value] = checkbox.checked;
-    });
+    filterManager.config('difficulty')[this.value] = this.checked;
+    filterManager.saveConfig();
     filterManager.trigger('difficulty');
   };
   _(ENEMY_TAGS).forEach(function(tag, difficulty) {
@@ -517,7 +513,7 @@ function addWarBaseFilter($panel) {
   // FILTER: personal stats
   var $personalStatsFilter = $('<div>').append(($('<p>', {text: 'Personal Stats filter'})));
   var $personalStatsUpdateProgress = $('<span>');
-  var $personalStatsUpdateButton = $('<button>', {text: 'Update stats'})
+  $('<button>', {text: 'Update stats'})
     .appendTo($personalStatsFilter)
     .after($personalStatsUpdateProgress)
     .on('click', function() {
@@ -544,14 +540,13 @@ function addWarBaseFilter($panel) {
       .on('change', function() {
         var newValue = this.value;
 
-        // TODO: promise einbauen, da trigger() gerufen wird, bevor config() fertig ist!
-        filterManager.config('personalStats', function(filterConfig) {
-          if (newValue !== '' && isNumber(newValue)) {
-            filterConfig.stats[statIndex] = parseInt(newValue, 10);
-          } else {
-            delete filterConfig.stats[statIndex];
-          }
-        });
+        if (newValue !== '' && isNumber(newValue)) {
+          filterManager.config('personalStats')[statIndex] = parseInt(newValue, 10);
+        } else {
+          delete filterManager.config('personalStats')[statIndex];
+        }
+        
+        filterManager.saveConfig();
         filterManager.trigger('personalStats');
       });
 
