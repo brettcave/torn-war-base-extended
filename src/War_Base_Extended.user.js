@@ -510,38 +510,6 @@ function addWarBaseFilter($panel) {
   });
 
   // FILTER: personal stats
-  var personalStatsFilterCreateLabel = function(statValue, statName) {
-    var $label = $('<label>');
-
-    var $statValueField = $('<input>', {type: 'text', value: statValue})
-      .on('keyup', function() {
-        var newValue = this.value;
-
-        if (newValue !== '' && isNumber(newValue)) {
-          filterManager.config('personalStats').stats[statName] = parseInt(newValue, 10);
-          this.style.border = '';
-        } else {
-          this.style.border = '1px solid red';
-        }
-        
-        filterManager.saveConfig();
-        filterManager.trigger('personalStats');
-      });
-
-    var $deleteStatButton = $('<span>', {text: '[X]', class: 'clickable'}).on('click', function() {
-      // enable stat in select
-      delete filterManager.config('personalStats').stats[statName];
-      filterManager.saveConfig();
-      $label.remove();
-    });
-
-    $label
-      .append(statName + ': ')
-      .append($statValueField)
-      .append($deleteStatButton);
-
-    return $label;
-  };
   var $personalStatsFilter = $('<div>').append(($('<p>', {text: 'Personal Stats filter'})));
 
   var $personalStatsUpdateProgress = $('<span>');
@@ -576,6 +544,40 @@ function addWarBaseFilter($panel) {
     $personalStatsSelect.append($('<option>', {text: statName, disabled: _.contains(alreadyAddedStats, statName)}));
   });
 
+  var personalStatsFilterCreateLabel = function(statValue, statName) {
+    var $label = $('<label>');
+
+    var $statValueField = $('<input>', {type: 'text', value: statValue})
+      .on('keyup', function() {
+        var newValue = this.value;
+
+        if (newValue !== '' && isNumber(newValue)) {
+          filterManager.config('personalStats').stats[statName] = parseInt(newValue, 10);
+          this.style.border = '';
+        } else {
+          this.style.border = '1px solid red';
+        }
+        
+        filterManager.saveConfig();
+        filterManager.trigger('personalStats');
+      });
+
+    var $deleteStatButton = $('<span>', {text: '[X]', class: 'clickable'}).on('click', function() {
+      $personalStatsSelect.find('option:contains(' + statName + ')').prop('disabled', false);
+
+      delete filterManager.config('personalStats').stats[statName];
+      filterManager.saveConfig();
+      $label.remove();
+    });
+
+    $label
+      .append(statName + ': ')
+      .append($statValueField)
+      .append($deleteStatButton);
+
+    return $label;
+  };
+
   $('<button>', {text: 'add this stat'})
     .appendTo($personalStatsSelectPanel)
     .on('click', function() {
@@ -587,7 +589,6 @@ function addWarBaseFilter($panel) {
       // add stat to active filters
       $personalStatsActiveFilters.append(personalStatsFilterCreateLabel(statValue, statName));
 
-      
       $selectedOption.prop('disabled', true);
       $selectedOption.prop('selected', false);
     });  
