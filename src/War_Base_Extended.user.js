@@ -182,16 +182,15 @@ function updatePlayerStats(id) {
   return $.ajax({type: 'GET', url: 'personalstats.php?ID=' + id}).then(function(page) {
     var $page = $(page);
 
-    var personalStats = [];
+    var personalStats = {};
 
     $page.find('.statistic ul.right li').each(function() {
       var name = this.children[0].innerHTML;
       name = name.slice(0, name.length - 1); // remove colon
 
       // if this is a known stat => add to return data
-      var statIndex = _.indexOf(PERSONAL_STATS, name);
-      if (statIndex !== -1) {
-        personalStats[statIndex] = parseNumber(this.children[1].textContent);
+      if (_(PERSONAL_STATS).contains(name)) {
+        personalStats[name] = parseNumber(this.children[1].textContent);
       }
     });
 
@@ -369,11 +368,13 @@ function Filter(id, test) {
  */
 function addWarBaseFilter($panel) {
   addCss(
-    '#vinkuun-extendedWarBasePanel { line-height: 2em }' +
-    '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 2px; margin: 0 4px; border: 1px solid #fff; border-radius: 5px }' +
-    '#vinkuun-extendedWarBasePanel input { margin-right: 5px; vertical-align: text-bottom }' +
-    '#vinkuun-extendedWarBasePanel input[type="number"] { vertical-align: baseline; line-height: 1.3em }' +
-    '#vinkuun-extendedWarBasePanel { padding: 4px; }'
+    '#vinkuun-extendedWarBasePanel { line-height: 2em; padding: 4px }' +
+    '#vinkuun-extendedWarBasePanel div { margin: 2px 0 }' +
+    '#vinkuun-extendedWarBasePanel label { background-color: rgba(200, 195, 195, 1); padding: 4px 6px; margin: 0 4px; border: 1px solid #808080; border-radius: 5px }' +
+    '#vinkuun-extendedWarBasePanel input { margin-right: 5px; border: 1px solid #808080 }' +
+    '#vinkuun-extendedWarBasePanel input[type="text"] { line-height: 1.5em; width: 50px }' +
+    '#vinkuun-extendedWarBasePanel input[type="checkbox"] { vertical-align: text-bottom }' +
+    '#vinkuun-extendedWarBasePanel .clickable:hover { cursor: pointer }'
   );
 
   var filterManager = new FilterManager({
@@ -440,14 +441,12 @@ function addWarBaseFilter($panel) {
         if (stats) {
           var hidePlayer = false;
 
-          _.chain(config.stats)
-            .each(function(lowerBound, statIndex) {
-              console.log(PERSONAL_STATS[statIndex], lowerBound, stats.personalStats[statIndex], player.id);
-              if (lowerBound < stats.personalStats[statIndex]) {
-                hidePlayer = true;
-                return false; // break each
-              }
-            });
+          _(config.stats).each(function(lowerBound, statName) {
+            if (lowerBound < stats.personalStats[statName]) {
+              hidePlayer = true;
+              return false; // break each
+            }
+          });
 
           return hidePlayer;
         } else {
@@ -457,7 +456,7 @@ function addWarBaseFilter($panel) {
         return false;
       }
     },
-    {active: false, stats: []} // stats will be combined with OR
+    {active: false, stats: {'Attacks won': 1000, 'Xanax taken': 500}} // stats will be combined with OR
   );
 
   // FILTER: status = ok
@@ -481,7 +480,7 @@ function addWarBaseFilter($panel) {
   // FILTER: status = hospital
   var $statusHospitalFilter = $('<label>', {text: 'in hospital for more than ', title: 'Leave this field blank to disable this filter'})
     .append(
-      $('<input>', {type: 'number', style: 'width: 50px', value: filterManager.config('statusHospital').hospitalTimeLeft})
+      $('<input>', {type: 'text', style: 'width: 50px', value: filterManager.config('statusHospital').hospitalTimeLeft})
         .on('change', function() {
           if (isNaN(this.value)) {
             filterManager.config('statusHospital', {active: false, hospitalTimeLeft: ''});
@@ -494,7 +493,7 @@ function addWarBaseFilter($panel) {
     .append(' minutes');
 
   // FILTER: difficulty
-  var $difficultyFilter = $('<p>', {text: 'Hide enemies with a difficulty of '});
+  var $difficultyFilter = $('<div>').append($('<span>', {text: 'Hide enemies with a difficulty of '}));
   var changeCallback = function() {
     filterManager.config('difficulty')[this.value] = this.checked;
     filterManager.saveConfig();
@@ -503,7 +502,7 @@ function addWarBaseFilter($panel) {
   _(ENEMY_TAGS).forEach(function(tag, difficulty) {
     $difficultyFilter.append(
       $('<label>', {text: tag.text})
-        .append(
+        .prepend(
           $('<input>', {type: 'checkbox', value: difficulty, checked: filterManager.config('difficulty')[difficulty] || false})
             .on('change', changeCallback)
         )
@@ -511,7 +510,40 @@ function addWarBaseFilter($panel) {
   });
 
   // FILTER: personal stats
+  var personalStatsFilterCreateLabel = function(statValue, statName) {
+    var $label = $('<label>');
+
+    var $statValueField = $('<input>', {type: 'text', value: statValue})
+      .on('keyup', function() {
+        var newValue = this.value;
+
+        if (newValue !== '' && isNumber(newValue)) {
+          filterManager.config('personalStats').stats[statName] = parseInt(newValue, 10);
+          this.style.border = '';
+        } else {
+          this.style.border = '1px solid red';
+        }
+        
+        filterManager.saveConfig();
+        filterManager.trigger('personalStats');
+      });
+
+    var $deleteStatButton = $('<span>', {text: '[X]', class: 'clickable'}).on('click', function() {
+      // enable stat in select
+      delete filterManager.config('personalStats').stats[statName];
+      filterManager.saveConfig();
+      $label.remove();
+    });
+
+    $label
+      .append(statName + ': ')
+      .append($statValueField)
+      .append($deleteStatButton);
+
+    return $label;
+  };
   var $personalStatsFilter = $('<div>').append(($('<p>', {text: 'Personal Stats filter'})));
+
   var $personalStatsUpdateProgress = $('<span>');
   $('<button>', {text: 'Update stats'})
     .appendTo($personalStatsFilter)
@@ -531,35 +563,43 @@ function addWarBaseFilter($panel) {
         filterManager.trigger('personalStats');
       });
     });
-  var $personalStatsTable = $('<table>').appendTo($personalStatsFilter);
 
-  _(PERSONAL_STATS).each(function(stat, statIndex) {
-    var statValue = filterManager.config('personalStats').stats[statIndex] || '';
+  // construct select panel
+  var $personalStatsSelectPanel = $('<div>').appendTo($personalStatsFilter);
+  var $personalStatsActiveFilters = $('<div>').appendTo($personalStatsFilter);
 
-    var $statValueField = $('<input>', {type: 'text', value: statValue})
-      .on('change', function() {
-        var newValue = this.value;
+  var $personalStatsSelect = $('<select>').appendTo($personalStatsSelectPanel);
 
-        if (newValue !== '' && isNumber(newValue)) {
-          filterManager.config('personalStats')[statIndex] = parseInt(newValue, 10);
-        } else {
-          delete filterManager.config('personalStats')[statIndex];
-        }
-        
-        filterManager.saveConfig();
-        filterManager.trigger('personalStats');
-      });
+  var alreadyAddedStats = _.map(filterManager.config('personalStats').stats, function(statValue, statName) { return statName; });
 
-    var $row = $('<tr>')
-      .append($('<td>', {text: stat}))
-      .append($('<td>').append($statValueField)); // stat name
+  _(PERSONAL_STATS).each(function(statName) {
+    $personalStatsSelect.append($('<option>', {text: statName, disabled: _.contains(alreadyAddedStats, statName)}));
+  });
 
-    $personalStatsTable.append($row);
+  $('<button>', {text: 'add this stat'})
+    .appendTo($personalStatsSelectPanel)
+    .on('click', function() {
+      var $selectedOption = $personalStatsSelect.find(':selected');
+
+      var statValue = '';
+      var statName = $selectedOption.text();
+
+      // add stat to active filters
+      $personalStatsActiveFilters.append(personalStatsFilterCreateLabel(statValue, statName));
+
+      
+      $selectedOption.prop('disabled', true);
+      $selectedOption.prop('selected', false);
+    });  
+
+  _(filterManager.config('personalStats').stats).each(function(statValue, statName) {
+    $personalStatsActiveFilters.append(personalStatsFilterCreateLabel(statValue, statName));
   });
 
   $panel
-    .append($('<p>', {text: ' enemies are hidden by the filter.'}).prepend(filterManager.$hiddenCount))
-    .append($('<p>', {text: 'Hide enemies who are '})
+    .append($('<div>').append(filterManager.$hiddenCount).append($('<span>', {text: ' enemies are hidden by the filter.'})))
+    .append($('<div>')
+      .append($('<span>', {text: 'Hide enemies who are '}))
       .append($statusOkFilter).append(' or ')
       .append($statusTravelingFilter).append(' or ')
       .append($statusHospitalFilter))

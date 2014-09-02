@@ -6,7 +6,8 @@
     "MutationObserver": true,
     "console": true,
     "document": true,
-    "_": true
+    "_": true,
+    "Promise": true
   },
   "rules": {
     "new-cap": 1,
