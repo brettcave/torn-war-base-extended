@@ -456,7 +456,7 @@ function addWarBaseFilter($panel) {
         return false;
       }
     },
-    {active: false, stats: {'Attacks won': 1000, 'Xanax taken': 500}} // stats will be combined with OR
+    {active: true, stats: {'Attacks won': 1000, 'Xanax taken': 500}} // stats will be combined with OR
   );
 
   // FILTER: status = ok
