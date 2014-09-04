@@ -510,7 +510,12 @@ function addWarBaseFilter($panel) {
   });
 
   // FILTER: personal stats
-  var $personalStatsFilter = $('<div>').append(($('<p>', {text: 'Personal Stats filter'})));
+  var $personalStatsFilterToggle = $('<label>', {text: 'active'}).prepend($('<input>', {type: 'checkbox', checked: filterManager.config('personalStats').active}).on('change', function() {
+    filterManager.config('personalStats').active = this.checked;
+    filterManager.saveConfig();
+    filterManager.trigger('personalStats');
+  }));
+  var $personalStatsFilter = $('<div>').append(($('<p>', {text: 'Personal Stats filter'}).append($personalStatsFilterToggle)));
 
   var $personalStatsUpdateProgress = $('<span>');
   $('<button>', {text: 'Update stats'})
