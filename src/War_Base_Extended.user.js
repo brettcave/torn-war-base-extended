@@ -4,7 +4,7 @@
 // @author      Vinkuun [1791283]
 // @description Brings back the old war base layout, adds a filter to the war base, enables enemy tagging
 // @include     *.torn.com/factions.php?step=your*
-// @version     2.2.0
+// @version     2.2.1
 // @require     http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js
 // @grant       GM_addStyle
 // ==/UserScript==
@@ -91,7 +91,7 @@ function shouldHideWarBase() {
 
 /**
  * Applys the filter to the war base
- * 
+ *
  * @param  {jquery-Object} $list
  * @param  {Object} filter
  */
@@ -195,7 +195,7 @@ function reapplyFilter(newFilter) {
 
 /**
  * Returns the remaining hospital time in minutes
- * 
+ *
  * @param  {String} text The tooltip text of the hospital icon
  * @return {Integer}
  */
@@ -217,7 +217,7 @@ var TAGS = {
 };
 
 var enemyTags = JSON.parse(localStorage.vinkuunEnemyTags || '{}');
- 
+
 function addEnemyTagging() {
   GM_addStyle(
     'select.vinkuun-enemeyDifficulty { font-size: 12px; vertical-align: text-bottom }' +
@@ -321,7 +321,7 @@ try {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       // The main content is being added to the div
-      if (mutation.addedNodes.length === 18) {
+      if (mutation.addedNodes.length === 19) {
         init();
       }
     });
