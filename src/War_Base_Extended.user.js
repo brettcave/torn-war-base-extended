@@ -171,7 +171,7 @@ function addFilterPanel($panel) {
     .on('change', function() {
       reapplyFilter({status: {federal: this.checked}});
     });
-  var $federalElement = $('<label>', {text: 'federal'}).prepend($federalCheckbox);
+  var $federalElement = $('<label>', {text: 'in federal prison'}).prepend($federalCheckbox);
   $panel.append($federalElement).append(', ');
    
   // status: hospital filter
