@@ -4,7 +4,7 @@
 // @author      Vinkuun [1791283]
 // @description Brings back the old war base layout, adds a filter to the war base, enables enemy tagging
 // @include     *.torn.com/factions.php?step=your*
-// @version     2.3.0
+// @version     2.3.1
 // @grant       none
 // @require     http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js
 // ==/UserScript==
@@ -417,6 +417,20 @@ function addWarBaseFilter($panel) {
     },
     {active: false}
   );
+  
+  filterManager.registerFilter('statusJail',
+    function(player, config) {
+      return config.active && player.status === 'Jail';
+    },
+    {active: false}
+  );
+  
+  filterManager.registerFilter('statusFederal',
+    function(player, config) {
+      return config.active && player.status === 'Federal';
+    },
+    {active: false}
+  );
 
   filterManager.registerFilter('statusHospital',
     function(player, config) {
@@ -476,7 +490,25 @@ function addWarBaseFilter($panel) {
         filterManager.trigger('statusTraveling');
       })
   );
+  
+  // FILTER: status = jail
+  var $statusJailFilter = $('<label>', {text: 'jail'}).prepend(
+    $('<input>', {type: 'checkbox', checked: filterManager.config('statusJail').active})
+	  .on('change', function() {
+	    filterManager.config('statusJail', {active: this.checked});
+		filterManager.trigger('statusJail');
+	  })
+  );
 
+  // FILTER: status = federal
+  var $statusFederalFilter = $('<label>', {text: 'federal'}).prepend(
+    $('<input>', {type: 'checkbox', checked: filterManager.config('statusFederal').active})
+	  .on('change', function() {
+	    filterManager.config('statusFederal', {active: this.checked});
+		filterManager.trigger('statusFederal');
+	  })
+  );
+  
   // FILTER: status = hospital
   var $statusHospitalFilter = $('<label>', {text: 'in hospital for more than ', title: 'Leave this field blank to disable this filter'})
     .append(
@@ -608,6 +640,8 @@ function addWarBaseFilter($panel) {
       .append($('<span>', {text: 'Hide enemies who are '}))
       .append($statusOkFilter).append(' or ')
       .append($statusTravelingFilter).append(' or ')
+	  .append($statusJailFilter).append(' or ')
+	  .append($statusFederalFilter).append(' or ')
       .append($statusHospitalFilter))
     .append($difficultyFilter)
     .append($personalStatsFilter);
@@ -736,7 +770,7 @@ try {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       // The war base has been added to the div
-      if (mutation.addedNodes.length === 18) {
+      if (mutation.addedNodes.length === 19) {
         init();
       }
     });
