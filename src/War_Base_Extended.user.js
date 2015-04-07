@@ -4,7 +4,7 @@
 // @author      Vinkuun [1791283]
 // @description Brings back the old war base layout, adds a filter to the war base, enables enemy tagging
 // @include     *.torn.com/factions.php?step=your*
-// @version     2.2.1
+// @version     2.3.0
 // @require     http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js
 // @grant       GM_addStyle
 // ==/UserScript==
@@ -118,6 +118,13 @@ function applyFilter() {
     items.parent().parent().hide();
   }
 
+  if (warBaseFilter.status.federal) {
+    items = $list.find('span:contains("Federal")');
+    countFiltered += items.length;
+    
+    items.parent().parent().hide();
+  }
+    
   if (warBaseFilter.status.hospital) {
     $list.find('span:contains("Hospital")').each(function() {
       var $this = $(this);
@@ -159,6 +166,14 @@ function addFilterPanel($panel) {
   var $okayElement = $('<label>', {text: 'okay'}).prepend($okayCheckbox);
   $panel.append($okayElement).append(' or ');
 
+  // status: federal filter
+  var $federalCheckbox = $('<input>', {type: 'checkbox'})
+    .on('change', function() {
+      reapplyFilter({status: {federal: this.checked}});
+    });
+  var $federalElement = $('<label>', {text: 'in federal prison'}).prepend($federalCheckbox);
+  $panel.append($federalElement).append(', ');
+   
   // status: hospital filter
   var $hospitalTextfield = $('<input>', {type: 'number', style: 'width: 50px'})
     .on('change', function() {
@@ -178,6 +193,7 @@ function addFilterPanel($panel) {
   // set the states of the elements according to the saved filter
   $travelingCheckbox[0].checked = warBaseFilter.status.traveling || false;
   $okayCheckbox[0].checked = warBaseFilter.status.okay || false;
+  $federalCheckbox[0].checked = warBaseFilter.status.federal || false;
   $hospitalTextfield.val(warBaseFilter.status.hospital || '');
 }
 
